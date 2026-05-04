@@ -1,0 +1,11 @@
+target/
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+booking-service/data/
+flight-service/data/
+payment-service/data/
+notification-service/data/
+**/target/

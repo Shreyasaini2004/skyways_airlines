@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+      default-filters:
+        - AddResponseHeader=X-SkyWays-Gateway, api-gateway
+      routes:
+        - id: flight-service
+          uri: ${skyways.routes.flight-url}
+          predicates:
+            - Path=/api/flights/**
+        - id: booking-service
+          uri: ${skyways.routes.booking-url}
+          predicates:
+            - Path=/api/bookings/**
+        - id: payment-service
+          uri: ${skyways.routes.payment-url}
+          predicates:
+            - Path=/api/payments/**
+        - id: notification-service
+          uri: ${skyways.routes.notification-url}
+          predicates:
+            - Path=/api/notifications/**
+
+skyways:
+  routes:
+    flight-url: ${FLIGHT_SERVICE_URL:http://localhost:8081}
+    booking-url: ${BOOKING_SERVICE_URL:http://localhost:8082}
+    payment-url: ${PAYMENT_SERVICE_URL:http://localhost:8083}
+    notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway

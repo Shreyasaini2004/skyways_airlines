@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/flight_db}
+    username: ${SPRING_DATASOURCE_USERNAME:skyways}
+    password: ${SPRING_DATASOURCE_PASSWORD:skyways}
+  jpa:
+    hibernate:
+      ddl-auto: update

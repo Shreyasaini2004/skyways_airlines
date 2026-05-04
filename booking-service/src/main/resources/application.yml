@@ -1,0 +1,46 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: booking-service
+  datasource:
+    url: jdbc:h2:mem:bookingdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+skyways:
+  kafka:
+    enabled: false
+    topics:
+      booking-events: booking-events
+  flight-service:
+    client: mock
+    base-url: http://localhost:8081

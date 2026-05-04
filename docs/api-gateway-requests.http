@@ -1,0 +1,52 @@
+### Gateway health
+GET http://localhost:8080/actuator/health
+
+### Search flights through gateway
+GET http://localhost:8080/api/flights/search?origin=DEL&destination=BOM&departureDate={{departureDate}}&passengers=1
+
+### Search mock GDS/Skyscanner through gateway
+GET http://localhost:8080/api/flights/provider-search?origin=DEL&destination=BOM&departureDate={{departureDate}}&passengers=1
+
+### Create booking through gateway
+POST http://localhost:8080/api/bookings
+Content-Type: application/json
+
+{
+  "userId": "asha@example.com",
+  "flightId": "SK101",
+  "totalAmount": 1500.00,
+  "currency": "INR",
+  "passengers": [
+    {
+      "firstName": "Asha",
+      "lastName": "Rao",
+      "dateOfBirth": "1998-03-15",
+      "passportNumber": "A1234567",
+      "email": "asha@example.com"
+    }
+  ]
+}
+
+### Pay through gateway
+POST http://localhost:8080/api/payments
+Content-Type: application/json
+
+{
+  "bookingId": "{{bookingId}}",
+  "userId": "asha@example.com",
+  "amount": 1500.00,
+  "currency": "INR",
+  "paymentMethodToken": "pm_success"
+}
+
+### Send notification through gateway
+POST http://localhost:8080/api/notifications
+Content-Type: application/json
+
+{
+  "bookingId": "{{bookingId}}",
+  "userId": "asha@example.com",
+  "recipient": "asha@example.com",
+  "subject": "SkyWays booking confirmed",
+  "body": "Your SkyWays booking has been confirmed."
+}

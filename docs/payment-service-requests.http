@@ -1,0 +1,47 @@
+### Create successful mock payment
+POST http://localhost:8083/api/payments
+Content-Type: application/json
+
+{
+  "bookingId": "{{bookingId}}",
+  "userId": "user-1",
+  "amount": 1500.00,
+  "currency": "INR",
+  "paymentMethodToken": "pm_success"
+}
+
+### Create declined mock payment
+POST http://localhost:8083/api/payments
+Content-Type: application/json
+
+{
+  "bookingId": "{{bookingId}}",
+  "userId": "user-1",
+  "amount": 1500.00,
+  "currency": "INR",
+  "paymentMethodToken": "pm_card_declined"
+}
+
+### Simulate payment provider timeout
+POST http://localhost:8083/api/payments
+Content-Type: application/json
+
+{
+  "bookingId": "{{bookingId}}",
+  "userId": "user-1",
+  "amount": 1500.00,
+  "currency": "INR",
+  "paymentMethodToken": "pm_timeout"
+}
+
+### Get one payment
+GET http://localhost:8083/api/payments/{{paymentId}}
+
+### Get payments for booking
+GET http://localhost:8083/api/payments?bookingId={{bookingId}}
+
+### Get payments for user
+GET http://localhost:8083/api/payments?userId=user-1
+
+### Refund succeeded payment
+PATCH http://localhost:8083/api/payments/{{paymentId}}/refund

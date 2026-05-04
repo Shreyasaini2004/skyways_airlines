@@ -1,0 +1,74 @@
+### Create a valid booking
+POST http://localhost:8082/api/bookings
+Content-Type: application/json
+
+{
+  "userId": "user-1",
+  "flightId": "SK101",
+  "totalAmount": 150.00,
+  "currency": "USD",
+  "passengers": [
+    {
+      "firstName": "Asha",
+      "lastName": "Rao",
+      "dateOfBirth": "1998-03-15",
+      "passportNumber": "A1234567",
+      "email": "asha.rao@example.com"
+    }
+  ]
+}
+
+### Trigger overbooking error
+POST http://localhost:8082/api/bookings
+Content-Type: application/json
+
+{
+  "userId": "user-1",
+  "flightId": "FULL",
+  "totalAmount": 150.00,
+  "currency": "USD",
+  "passengers": [
+    {
+      "firstName": "Asha",
+      "lastName": "Rao",
+      "dateOfBirth": "1998-03-15",
+      "passportNumber": "A1234567",
+      "email": "asha.rao@example.com"
+    }
+  ]
+}
+
+### Trigger passenger validation error
+POST http://localhost:8082/api/bookings
+Content-Type: application/json
+
+{
+  "userId": "user-1",
+  "flightId": "SK101",
+  "totalAmount": 150.00,
+  "currency": "USD",
+  "passengers": [
+    {
+      "firstName": "",
+      "lastName": "Rao",
+      "dateOfBirth": "2030-03-15",
+      "passportNumber": "bad",
+      "email": "not-an-email"
+    }
+  ]
+}
+
+### Get bookings for a user
+GET http://localhost:8082/api/bookings?userId=user-1
+
+### Get one booking
+GET http://localhost:8082/api/bookings/{{bookingId}}
+
+### Confirm a pending booking
+PATCH http://localhost:8082/api/bookings/{{bookingId}}/confirm
+
+### Mark payment failed
+PATCH http://localhost:8082/api/bookings/{{bookingId}}/payment-failed
+
+### Cancel a pending or failed booking
+PATCH http://localhost:8082/api/bookings/{{bookingId}}/cancel

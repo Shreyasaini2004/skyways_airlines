@@ -1,0 +1,152 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  flight-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: flight_db
+      POSTGRES_USER: skyways
+      POSTGRES_PASSWORD: skyways
+    ports:
+      - "5433:5432"
+    volumes:
+      - flight-postgres-data:/var/lib/postgresql/data
+
+  booking-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: booking_db
+      POSTGRES_USER: skyways
+      POSTGRES_PASSWORD: skyways
+    ports:
+      - "5434:5432"
+    volumes:
+      - booking-postgres-data:/var/lib/postgresql/data
+
+  payment-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: skyways
+      POSTGRES_PASSWORD: skyways
+    ports:
+      - "5435:5432"
+    volumes:
+      - payment-postgres-data:/var/lib/postgresql/data
+
+  notification-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: skyways
+      POSTGRES_PASSWORD: skyways
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification-postgres-data:/var/lib/postgresql/data
+
+  flight-service:
+    build: ./flight-service
+    depends_on:
+      - flight-postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://flight-postgres:5432/flight_db
+      SPRING_DATASOURCE_USERNAME: skyways
+      SPRING_DATASOURCE_PASSWORD: skyways
+    ports:
+      - "8081:8081"
+
+  booking-service:
+    build: ./booking-service
+    depends_on:
+      - booking-postgres
+      - flight-service
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://booking-postgres:5432/booking_db
+      SPRING_DATASOURCE_USERNAME: skyways
+      SPRING_DATASOURCE_PASSWORD: skyways
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SKYWAYS_KAFKA_ENABLED: "true"
+      SKYWAYS_FLIGHT_SERVICE_CLIENT: http
+      SKYWAYS_FLIGHT_SERVICE_BASE_URL: http://flight-service:8081
+    ports:
+      - "8082:8082"
+
+  payment-service:
+    build: ./payment-service
+    depends_on:
+      - payment-postgres
+      - booking-service
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://payment-postgres:5432/payment_db
+      SPRING_DATASOURCE_USERNAME: skyways
+      SPRING_DATASOURCE_PASSWORD: skyways
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SKYWAYS_KAFKA_ENABLED: "true"
+      SKYWAYS_BOOKING_SERVICE_CLIENT: http
+      SKYWAYS_BOOKING_SERVICE_BASE_URL: http://booking-service:8082
+    ports:
+      - "8083:8083"
+
+  notification-service:
+    build: ./notification-service
+    depends_on:
+      - notification-postgres
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://notification-postgres:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: skyways
+      SPRING_DATASOURCE_PASSWORD: skyways
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SKYWAYS_KAFKA_ENABLED: "true"
+    ports:
+      - "8084:8084"
+
+  api-gateway:
+    build: ./api-gateway
+    depends_on:
+      - flight-service
+      - booking-service
+      - payment-service
+      - notification-service
+    environment:
+      FLIGHT_SERVICE_URL: http://flight-service:8081
+      BOOKING_SERVICE_URL: http://booking-service:8082
+      PAYMENT_SERVICE_URL: http://payment-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+    ports:
+      - "8080:8080"
+
+volumes:
+  flight-postgres-data:
+  booking-postgres-data:
+  payment-postgres-data:
+  notification-postgres-data:

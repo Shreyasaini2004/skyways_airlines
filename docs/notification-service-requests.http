@@ -1,0 +1,32 @@
+### Send mock email notification
+POST http://localhost:8084/api/notifications
+Content-Type: application/json
+
+{
+  "bookingId": "{{bookingId}}",
+  "userId": "user-1",
+  "recipient": "asha.rao@example.com",
+  "subject": "SkyWays booking confirmed",
+  "body": "Your SkyWays booking has been confirmed. Thank you for flying with us."
+}
+
+### Trigger mock email failure
+POST http://localhost:8084/api/notifications
+Content-Type: application/json
+
+{
+  "bookingId": "{{bookingId}}",
+  "userId": "user-1",
+  "recipient": "customer@fail.test",
+  "subject": "SkyWays booking confirmed",
+  "body": "This request simulates SendGrid rejection."
+}
+
+### Get one notification
+GET http://localhost:8084/api/notifications/{{notificationId}}
+
+### Get notifications for booking
+GET http://localhost:8084/api/notifications?bookingId={{bookingId}}
+
+### Get notifications for user
+GET http://localhost:8084/api/notifications?userId=user-1

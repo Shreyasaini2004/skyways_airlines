@@ -1,0 +1,28 @@
+### Search flights
+GET http://localhost:8081/api/flights/search?origin=DEL&destination=BOM&departureDate={{departureDate}}&passengers=1
+
+### Search mock GDS/Skyscanner provider flights
+GET http://localhost:8081/api/flights/provider-search?origin=DEL&destination=BOM&departureDate={{departureDate}}&passengers=1
+
+### Get one flight
+GET http://localhost:8081/api/flights/{{flightId}}
+
+### Get one flight by flight number
+GET http://localhost:8081/api/flights/numbers/SK101
+
+### Check availability
+GET http://localhost:8081/api/flights/{{flightId}}/availability?passengers=2
+
+### Check availability by flight number
+GET http://localhost:8081/api/flights/numbers/SK101/availability?passengers=2
+
+### Create a seat hold
+POST http://localhost:8081/api/flights/{{flightId}}/seat-holds
+Content-Type: application/json
+
+{
+  "passengerCount": 2
+}
+
+### Release a seat hold
+DELETE http://localhost:8081/api/flights/seat-holds/{{seatHoldId}}
