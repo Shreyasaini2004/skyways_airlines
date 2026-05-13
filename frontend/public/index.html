@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en" ng-app="skywaysApp">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SkyWays Airline Management</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body ng-controller="SkywaysController as vm" render-icons ng-cloak>
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">
+          <i data-lucide="plane"></i>
+        </div>
+        <div>
+          <p class="eyebrow">SkyWays</p>
+          <h1>Airline Control Center</h1>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="gateway-pill" ng-class="vm.gatewayClass()" title="Current backend gateway">
+          <span class="status-dot"></span>
+          <span>{{ vm.gatewayStatusText() }}</span>
+          <small>{{ vm.config.apiBaseUrl || 'http://localhost:8080' }}</small>
+        </div>
+        <button type="button" class="icon-button" ng-click="vm.refreshUserData()" title="Refresh activity">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="intro-band">
+        <div class="intro-copy">
+          <p class="eyebrow">Live workflow</p>
+          <h2>Search flights, create bookings, collect payments, and notify travelers from one clean screen.</h2>
+        </div>
+
+        <div class="route-strip" aria-label="Current search route">
+          <div class="airport-chip">
+            <span>From</span>
+            <strong>{{ vm.search.origin || 'DEL' }}</strong>
+          </div>
+          <div class="route-line">
+            <span></span>
+            <i data-lucide="plane-takeoff"></i>
+          </div>
+          <div class="airport-chip">
+            <span>To</span>
+            <strong>{{ vm.search.destination || 'BOM' }}</strong>
+          </div>
+          <div class="trip-chip">
+            <i data-lucide="calendar-days"></i>
+            <span>{{ vm.dateLabel(vm.search.departureDate) }}</span>
+          </div>
+          <div class="trip-chip">
+            <i data-lucide="users"></i>
+            <span>{{ vm.search.passengers || 1 }} passenger{{ vm.search.passengers > 1 ? 's' : '' }}</span>
+          </div>
+        </div>
+
+        <div class="metric-strip">
+          <div class="metric-tile">
+            <i data-lucide="plane-takeoff"></i>
+            <span>Flights</span>
+            <strong>{{ vm.inventoryFlights.length }}</strong>
+          </div>
+          <div class="metric-tile accent-blue">
+            <i data-lucide="ticket-check"></i>
+            <span>Bookings</span>
+            <strong>{{ vm.bookings.length }}</strong>
+          </div>
+          <div class="metric-tile accent-gold">
+            <i data-lucide="credit-card"></i>
+            <span>Payments</span>
+            <strong>{{ vm.payments.length }}</strong>
+          </div>
+          <div class="metric-tile accent-coral">
+            <i data-lucide="mail-check"></i>
+            <span>Messages</span>
+            <strong>{{ vm.notifications.length }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <section class="workspace">
+          <section class="tool-panel search-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Flights</p>
+                <h2>Find the best route</h2>
+              </div>
+              <div class="segmented-control" aria-label="Flight result source">
+                <button type="button" ng-class="{active: vm.searchMode === 'inventory'}" ng-click="vm.searchMode = 'inventory'">
+                  <i data-lucide="database"></i>
+                  <span>Inventory</span>
+                </button>
+                <button type="button" ng-class="{active: vm.searchMode === 'provider'}" ng-click="vm.searchMode = 'provider'">
+                  <i data-lucide="radar"></i>
+                  <span>Provider</span>
+                </button>
+              </div>
+            </div>
+
+            <form class="search-grid" ng-submit="vm.searchFlights()">
+              <label>
+                <span>Origin</span>
+                <input type="text" ng-model="vm.search.origin" maxlength="3" placeholder="DEL" required>
+              </label>
+              <label>
+                <span>Destination</span>
+                <input type="text" ng-model="vm.search.destination" maxlength="3" placeholder="BOM" required>
+              </label>
+              <label>
+                <span>Departure date</span>
+                <input type="date" ng-model="vm.search.departureDate" required>
+              </label>
+              <label>
+                <span>Passengers</span>
+                <input type="number" ng-model="vm.search.passengers" min="1" max="9" required>
+              </label>
+              <button type="submit" class="primary-button" ng-disabled="vm.loading.search">
+                <i data-lucide="{{ vm.loading.search ? 'loader-circle' : 'search' }}"></i>
+                <span>{{ vm.loading.search ? 'Searching' : 'Search flights' }}</span>
+              </button>
+            </form>
+
+            <div class="notice" ng-if="vm.notice">
+              <i data-lucide="info"></i>
+              <span>{{ vm.notice }}</span>
+            </div>
+
+            <div class="result-toolbar">
+              <div>
+                <strong>{{ vm.activeFlights().length || 0 }} result{{ vm.activeFlights().length === 1 ? '' : 's' }}</strong>
+                <span ng-if="vm.searchMode === 'provider'">External comparison list</span>
+                <span ng-if="vm.searchMode === 'inventory'">Bookable SkyWays inventory</span>
+              </div>
+              <button type="button" ng-click="vm.fillSamplePassenger()" title="Fill demo passenger">
+                <i data-lucide="wand-sparkles"></i>
+                <span>Use sample traveler</span>
+              </button>
+            </div>
+
+            <div class="loading-grid" ng-if="vm.loading.search">
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+            </div>
+
+            <div class="empty-state" ng-if="!vm.loading.search && vm.activeFlights().length === 0">
+              <div class="empty-icon">
+                <i data-lucide="plane-takeoff"></i>
+              </div>
+              <h3>No flights to show yet</h3>
+              <p>Start the backend gateway, then search the seeded route. The sample inventory is usually dated seven days after the flight service starts.</p>
+            </div>
+
+            <div class="flight-list" ng-if="!vm.loading.search">
+              <article class="flight-card" ng-repeat="flight in vm.activeFlights() track by $index" ng-class="{selected: vm.selectedFlight.flightNumber === flight.flightNumber}">
+                <div class="flight-card-top">
+                  <div>
+                    <p class="flight-number">{{ flight.flightNumber }}</p>
+                    <h3>{{ flight.airline }}</h3>
+                  </div>
+                  <span class="badge" ng-class="vm.seatTone(flight)">
+                    {{ flight.availableSeats }} seats
+                  </span>
+                </div>
+
+                <div class="route-timeline">
+                  <div class="time-block">
+                    <strong>{{ vm.timeOnly(flight.departureTime) }}</strong>
+                    <span>{{ flight.origin }}</span>
+                  </div>
+                  <div class="timeline-line">
+                    <span></span>
+                    <i data-lucide="plane"></i>
+                  </div>
+                  <div class="time-block align-right">
+                    <strong>{{ vm.timeOnly(flight.arrivalTime) }}</strong>
+                    <span>{{ flight.destination }}</span>
+                  </div>
+                </div>
+
+                <div class="flight-facts">
+                  <span><i data-lucide="calendar"></i>{{ vm.dateLabel(flight.departureTime) }}</span>
+                  <span><i data-lucide="timer"></i>{{ vm.flightDuration(flight) }}</span>
+                  <span ng-if="flight.status"><i data-lucide="activity"></i>{{ flight.status }}</span>
+                  <span ng-if="flight.provider"><i data-lucide="radio-tower"></i>{{ flight.provider }}</span>
+                </div>
+
+                <div class="ticket-footer">
+                  <div class="fare">
+                    <span>{{ flight.currency }}</span>
+                    <strong>{{ vm.money(flight.baseFare || flight.fare) }}</strong>
+                  </div>
+                  <button type="button" class="select-button" ng-click="vm.selectFlight(flight)" ng-if="vm.searchMode === 'inventory'">
+                    <i data-lucide="ticket"></i>
+                    <span>Select</span>
+                  </button>
+                  <button type="button" disabled ng-if="vm.searchMode === 'provider'">
+                    <i data-lucide="eye"></i>
+                    <span>Compare</span>
+                  </button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="tool-panel activity-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Traveler record</p>
+                <h2>Bookings, payments, and messages</h2>
+              </div>
+              <form class="lookup-form" ng-submit="vm.refreshUserData()">
+                <input type="email" ng-model="vm.userId" placeholder="asha@example.com" required>
+                <button type="submit" title="Load user data">
+                  <i data-lucide="list-filter"></i>
+                </button>
+              </form>
+            </div>
+
+            <div class="activity-grid">
+              <div class="activity-column">
+                <div class="activity-title">
+                  <i data-lucide="ticket-check"></i>
+                  <h3>Bookings</h3>
+                </div>
+                <div class="activity-list">
+                  <button type="button" class="activity-item" ng-repeat="booking in vm.bookings track by booking.id" ng-click="vm.useBooking(booking)">
+                    <span>
+                      <strong>{{ booking.flightId }}</strong>
+                      <small>{{ booking.id }}</small>
+                    </span>
+                    <span class="badge" ng-class="vm.badgeClass(booking.status)">{{ booking.status }}</span>
+                  </button>
+                  <p class="empty-line" ng-if="!vm.bookings.length">No bookings loaded.</p>
+                </div>
+              </div>
+
+              <div class="activity-column">
+                <div class="activity-title">
+                  <i data-lucide="credit-card"></i>
+                  <h3>Payments</h3>
+                </div>
+                <div class="activity-list">
+                  <div class="activity-row" ng-repeat="payment in vm.payments track by payment.id">
+                    <span>
+                      <strong>{{ payment.currency }} {{ vm.money(payment.amount) }}</strong>
+                      <small>{{ payment.bookingId }}</small>
+                    </span>
+                    <span class="badge" ng-class="vm.badgeClass(payment.status)">{{ payment.status }}</span>
+                  </div>
+                  <p class="empty-line" ng-if="!vm.payments.length">No payments loaded.</p>
+                </div>
+              </div>
+
+              <div class="activity-column">
+                <div class="activity-title">
+                  <i data-lucide="mail-check"></i>
+                  <h3>Notifications</h3>
+                </div>
+                <div class="activity-list">
+                  <div class="activity-row" ng-repeat="message in vm.notifications track by message.id">
+                    <span>
+                      <strong>{{ message.subject }}</strong>
+                      <small>{{ message.recipient }}</small>
+                    </span>
+                    <span class="badge" ng-class="vm.badgeClass(message.status)">{{ message.status }}</span>
+                  </div>
+                  <p class="empty-line" ng-if="!vm.notifications.length">No notifications loaded.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <aside class="tool-panel flow-panel">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow">Guided flow</p>
+              <h2>Build the trip</h2>
+            </div>
+            <span class="badge" ng-class="vm.badgeClass(vm.currentBooking.status)" ng-if="vm.currentBooking">{{ vm.currentBooking.status }}</span>
+          </div>
+
+          <div class="workflow-steps" aria-label="Booking workflow status">
+            <div class="workflow-step" ng-class="vm.workflowClass(1)">
+              <span>1</span>
+              <strong>Book</strong>
+            </div>
+            <div class="workflow-step" ng-class="vm.workflowClass(2)">
+              <span>2</span>
+              <strong>Pay</strong>
+            </div>
+            <div class="workflow-step" ng-class="vm.workflowClass(3)">
+              <span>3</span>
+              <strong>Notify</strong>
+            </div>
+          </div>
+
+          <div class="selected-ticket" ng-if="vm.selectedFlight">
+            <div class="selected-ticket-main">
+              <div>
+                <span>Selected flight</span>
+                <strong>{{ vm.selectedFlight.flightNumber }}</strong>
+              </div>
+              <button type="button" class="icon-button" ng-click="vm.clearSelection()" title="Clear selected flight">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+            <div class="selected-ticket-route">
+              <span>{{ vm.selectedFlight.origin }}</span>
+              <i data-lucide="plane"></i>
+              <span>{{ vm.selectedFlight.destination }}</span>
+            </div>
+            <p>{{ vm.dateLabel(vm.selectedFlight.departureTime) }} at {{ vm.timeOnly(vm.selectedFlight.departureTime) }}</p>
+          </div>
+
+          <form class="form-stack" ng-submit="vm.createBooking()">
+            <div class="form-title">
+              <div>
+                <h3>Passenger and booking</h3>
+                <p>Use a selected flight or type a flight number manually.</p>
+              </div>
+              <button type="button" ng-click="vm.fillSamplePassenger()" title="Fill demo passenger">
+                <i data-lucide="wand-sparkles"></i>
+                <span>Sample</span>
+              </button>
+            </div>
+
+            <label>
+              <span>User email</span>
+              <input type="email" ng-model="vm.userId" required>
+            </label>
+            <div class="two-col">
+              <label>
+                <span>Flight number</span>
+                <input type="text" ng-model="vm.booking.flightId" placeholder="SK101" required>
+              </label>
+              <label>
+                <span>Total amount</span>
+                <input type="number" ng-model="vm.booking.totalAmount" min="1" step="0.01" required>
+              </label>
+            </div>
+            <label>
+              <span>Currency</span>
+              <input type="text" ng-model="vm.booking.currency" maxlength="3" required>
+            </label>
+
+            <div class="passenger-shell">
+              <div class="passenger-header">
+                <strong>Passengers</strong>
+                <div>
+                  <button type="button" ng-click="vm.removePassenger()" title="Remove passenger" ng-disabled="vm.booking.passengers.length <= 1">
+                    <i data-lucide="minus"></i>
+                  </button>
+                  <button type="button" ng-click="vm.addPassenger()" title="Add passenger" ng-disabled="vm.booking.passengers.length >= 9">
+                    <i data-lucide="plus"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="passenger-form" ng-repeat="passenger in vm.booking.passengers track by $index">
+                <span class="passenger-count">Passenger {{ $index + 1 }}</span>
+                <div class="two-col">
+                  <input type="text" ng-model="passenger.firstName" placeholder="First name" required>
+                  <input type="text" ng-model="passenger.lastName" placeholder="Last name" required>
+                </div>
+                <div class="two-col">
+                  <input type="date" ng-model="passenger.dateOfBirth" required>
+                  <input type="text" ng-model="passenger.passportNumber" placeholder="Passport number" required>
+                </div>
+                <input type="email" ng-model="passenger.email" placeholder="Passenger email" required>
+              </div>
+            </div>
+
+            <button type="submit" class="primary-button full" ng-disabled="vm.loading.booking">
+              <i data-lucide="{{ vm.loading.booking ? 'loader-circle' : 'check-circle' }}"></i>
+              <span>{{ vm.loading.booking ? 'Creating booking' : 'Create booking' }}</span>
+            </button>
+          </form>
+
+          <form class="form-stack" ng-submit="vm.createPayment()">
+            <div class="form-title">
+              <div>
+                <h3>Payment</h3>
+                <p>Use mock Stripe-style tokens to test success and failure.</p>
+              </div>
+            </div>
+            <label>
+              <span>Booking ID</span>
+              <input type="text" ng-model="vm.payment.bookingId" required>
+            </label>
+            <div class="two-col">
+              <label>
+                <span>Amount</span>
+                <input type="number" ng-model="vm.payment.amount" min="1" step="0.01" required>
+              </label>
+              <label>
+                <span>Token</span>
+                <select ng-model="vm.payment.paymentMethodToken" required>
+                  <option value="pm_success">pm_success</option>
+                  <option value="pm_card_declined">pm_card_declined</option>
+                  <option value="pm_insufficient_funds">pm_insufficient_funds</option>
+                  <option value="pm_fail">pm_fail</option>
+                  <option value="pm_timeout">pm_timeout</option>
+                </select>
+              </label>
+            </div>
+            <button type="submit" class="primary-button full" ng-disabled="vm.loading.payment || !vm.payment.bookingId">
+              <i data-lucide="{{ vm.loading.payment ? 'loader-circle' : 'credit-card' }}"></i>
+              <span>{{ vm.loading.payment ? 'Processing payment' : 'Pay booking' }}</span>
+            </button>
+            <div class="inline-actions" ng-if="vm.currentBooking">
+              <button type="button" ng-click="vm.confirmBooking()">
+                <i data-lucide="badge-check"></i>
+                <span>Confirm</span>
+              </button>
+              <button type="button" ng-click="vm.cancelBooking()">
+                <i data-lucide="ban"></i>
+                <span>Cancel</span>
+              </button>
+            </div>
+          </form>
+
+          <form class="form-stack" ng-submit="vm.sendNotification()">
+            <div class="form-title">
+              <div>
+                <h3>Notification</h3>
+                <p>Send an email confirmation or status update.</p>
+              </div>
+            </div>
+            <label>
+              <span>Recipient</span>
+              <input type="email" ng-model="vm.notification.recipient" required>
+            </label>
+            <label>
+              <span>Subject</span>
+              <input type="text" ng-model="vm.notification.subject" maxlength="120" required>
+            </label>
+            <label>
+              <span>Message</span>
+              <textarea rows="4" ng-model="vm.notification.body" required></textarea>
+            </label>
+            <button type="submit" class="primary-button full" ng-disabled="vm.loading.notification || !vm.notification.bookingId">
+              <i data-lucide="{{ vm.loading.notification ? 'loader-circle' : 'send' }}"></i>
+              <span>{{ vm.loading.notification ? 'Sending' : 'Send notification' }}</span>
+            </button>
+          </form>
+        </aside>
+      </section>
+    </main>
+
+    <div class="toast" ng-if="vm.toast.message" ng-class="vm.toast.type">
+      <strong>{{ vm.toast.title }}</strong>
+      <span>{{ vm.toast.message }}</span>
+      <button type="button" ng-click="vm.dismissToast()" title="Dismiss">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
